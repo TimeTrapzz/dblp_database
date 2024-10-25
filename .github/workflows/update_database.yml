@@ -1,5 +1,8 @@
 name: DBLP Database Update
 
+env:
+  PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+
 on:
   schedule:
     - cron: '0 0 * * 0'  # 每周日运行
@@ -32,9 +35,9 @@ jobs:
       # 3. 下载和处理 DBLP 数据
       - name: Download and process DBLP
         run: |
-          wget https://dblp.org/xml/dblp.dtd
-          wget https://dblp.org/xml/dblp.xml.gz
-          wget https://dblp.org/xml/dblp.xml.gz.md5
+          wget --no-verbose --show-progress https://dblp.org/xml/dblp.dtd
+          wget --no-verbose --show-progress https://dblp.org/xml/dblp.xml.gz
+          wget --no-verbose --show-progress https://dblp.org/xml/dblp.xml.gz.md5
           
       # 4. 转换为 SQL
       - name: Convert to SQL
