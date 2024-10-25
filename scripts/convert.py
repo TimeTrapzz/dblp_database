@@ -90,6 +90,8 @@ def process_entries(context, dtd, sql_file):
         CREATE INDEX IF NOT EXISTS dblp_entries_title_idx_tmp ON dblp_entries_tmp USING GIN(to_tsvector('english', title));
         DROP TABLE IF EXISTS dblp_entries;
         ALTER TABLE dblp_entries_tmp RENAME TO dblp_entries;
+        ALTER INDEX dblp_entries_tmp_pkey RENAME TO dblp_entries_pkey;
+        ALTER INDEX dblp_entries_tmp_url_key RENAME TO dblp_entries_url_key;
         ALTER INDEX dblp_entries_title_idx_tmp RENAME TO dblp_entries_title_idx;
         """)
 
