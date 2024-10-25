@@ -1,5 +1,8 @@
 name: DBLP Database Update
 
+environment: 
+  name: production
+
 env:
   PGPASSWORD: ${{ secrets.DB_PASSWORD }}
 
