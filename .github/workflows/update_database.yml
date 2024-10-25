@@ -53,4 +53,4 @@ jobs:
       # 6. 清理临时文件
       - name: Cleanup
         run: |
-          rm dblp.xml dblp.dtd dblp.sql
+          rm dblp.xml.gz dblp.xml.gz.md5 dblp.dtd dblp.sql
