@@ -1,11 +1,5 @@
 name: DBLP Database Update
 
-environment: 
-  name: production
-
-env:
-  PGPASSWORD: ${{ secrets.DB_PASSWORD }}
-
 on:
   schedule:
     - cron: '0 0 * * 0'  # 每周日运行
@@ -14,6 +8,10 @@ on:
 jobs:
   update-dblp:
     runs-on: ubuntu-latest
+    environment: 
+      name: production
+    env:
+      PGPASSWORD: ${{ secrets.DB_PASSWORD }}
     
     steps:
       - uses: actions/checkout@v4
