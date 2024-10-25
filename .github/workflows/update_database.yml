@@ -1,0 +1,52 @@
+name: DBLP Database Update
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日运行
+  workflow_dispatch:      # 允许手动触发
+
+jobs:
+  update-dblp:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 1. 设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.12'
+          
+      # 2. 安装依赖
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install lxml tqdm
+
+      - name: Setup PostgreSQL
+        uses: tj-actions/install-postgresql@v3
+        with:
+          postgresql-version: 16
+
+      # 3. 下载和处理 DBLP 数据
+      - name: Download and process DBLP
+        run: |
+          wget https://dblp.org/xml/dblp.dtd
+          wget https://dblp.org/xml/dblp.xml.gz
+          wget https://dblp.org/xml/dblp.xml.gz.md5
+          
+      # 4. 转换为 SQL
+      - name: Convert to SQL
+        run: |
+          python scripts/convert.py --dtd_file dblp.dtd --xml_file dblp.xml.gz --md5_file dblp.xml.gz.md5 --output_sql_file dblp.sql
+          
+      # 5. 导入到 PostgreSQL
+      - name: Import to PostgreSQL
+        run: |
+          psql -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f dblp.sql
+          
+      # 6. 清理临时文件
+      - name: Cleanup
+        run: |
+          rm dblp.xml dblp.dtd dblp.sql

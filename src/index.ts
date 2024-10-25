@@ -14,12 +14,7 @@ import postgres from "postgres";
 
 export default {
 	async fetch(request: any, env: any, ctx: any): Promise<Response> {
-		const sql = postgres({
-			username: env.DB_USERNAME,
-			password: env.DB_PASSWORD,
-			host: env.DB_HOST,
-			port: env.DB_PORT,
-			database: env.DB_NAME,
+		const sql = postgres(env.DB_URL, {
 			ssl: {
 				rejectUnauthorized: true
 			}
@@ -49,7 +44,7 @@ async function handleGet(request: any, sql: any): Promise<Response> {
 			headers: { "Content-Type": "application/json" }
 		});
 	}
-	const searchQuery = query.split(' ').map((word: any) => `${word}:*`).join(' & ');
+	const searchQuery = query.trim() == '' ? 'qaqzzz:*' : `${query}:*`;
 	const result = await sql`
     		SELECT url, title,
            	ts_rank_cd(to_tsvector('english', title), to_tsquery('english', ${searchQuery})) AS rank
@@ -87,6 +82,10 @@ async function handlePost(request: any, sql: any): Promise<Response> {
 	}
 
 	const searchQueries = queries.map(query => {
+		// 如果query是空字符串或只有空格
+		if (query.trim() == '') {
+			return 'qaqzzz:*';
+		}
 		return `${query}:*`;
 	});
 	
