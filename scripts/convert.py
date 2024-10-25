@@ -52,7 +52,6 @@ def process_entries(context, dtd, sql_file):
             title TEXT,
             type TEXT
         );
-        CREATE INDEX IF NOT EXISTS dblp_entries_title_idx_tmp ON dblp_entries_tmp USING GIN(to_tsvector('english', title));
         """)
 
         # Process XML elements in streaming fashion
@@ -88,6 +87,7 @@ def process_entries(context, dtd, sql_file):
 
         # Write final SQL commands
         f.write("""
+        CREATE INDEX IF NOT EXISTS dblp_entries_title_idx_tmp ON dblp_entries_tmp USING GIN(to_tsvector('english', title));
         DROP TABLE IF EXISTS dblp_entries;
         ALTER TABLE dblp_entries_tmp RENAME TO dblp_entries;
         ALTER INDEX dblp_entries_title_idx_tmp RENAME TO dblp_entries_title_idx;
