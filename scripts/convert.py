@@ -11,15 +11,22 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
+def calculate_md5(file_path, chunk_size=1024 * 1024):
+    digest = hashlib.md5()
+    with open(file_path, 'rb') as file:
+        for chunk in iter(lambda: file.read(chunk_size), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def read_xml(dtd_file, xml_file, md5_file):
     with open(md5_file, 'r') as f:
         md5_content = f.read().strip().split(' ')[0]
-    with open(xml_file, 'rb') as f:
-        file_md5 = hashlib.md5(f.read()).hexdigest()
-        logger.info(f"File MD5: {file_md5}")
-        logger.info(f"Actual MD5: {md5_content}")
-        if file_md5 != md5_content:
-            raise Exception("MD5 check failed")
+    file_md5 = calculate_md5(xml_file)
+    logger.info(f"File MD5: {file_md5}")
+    logger.info(f"Actual MD5: {md5_content}")
+    if file_md5 != md5_content:
+        raise Exception("MD5 check failed")
 
     dtd = etree.DTD(file=dtd_file)
 
@@ -46,7 +53,8 @@ def process_entries(context, dtd, sql_file):
     with open(sql_file, 'w') as f:
         # Write table creation SQL
         f.write("""
-        CREATE TABLE IF NOT EXISTS dblp_entries_tmp (
+        DROP TABLE IF EXISTS dblp_entries_tmp;
+        CREATE TABLE dblp_entries_tmp (
             id SERIAL PRIMARY KEY,
             url TEXT UNIQUE,
             title TEXT,
@@ -88,11 +96,13 @@ def process_entries(context, dtd, sql_file):
         # Write final SQL commands
         f.write("""
         CREATE INDEX IF NOT EXISTS dblp_entries_title_idx_tmp ON dblp_entries_tmp USING GIN(to_tsvector('english', title));
+        BEGIN;
         DROP TABLE IF EXISTS dblp_entries;
         ALTER TABLE dblp_entries_tmp RENAME TO dblp_entries;
         ALTER INDEX dblp_entries_tmp_pkey RENAME TO dblp_entries_pkey;
         ALTER INDEX dblp_entries_tmp_url_key RENAME TO dblp_entries_url_key;
         ALTER INDEX dblp_entries_title_idx_tmp RENAME TO dblp_entries_title_idx;
+        COMMIT;
         """)
 
     logger.info(f"Processing complete, processed {total_count} entries")
