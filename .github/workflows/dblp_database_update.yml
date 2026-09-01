@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - '.github/workflows/update_database.yml'
+      - '.github/workflows/dblp_database_update.yml'
       - 'scripts/convert.py'
       - 'tests/test_convert.py'
   schedule:
