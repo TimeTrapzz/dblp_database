@@ -1,13 +1,28 @@
 name: DBLP Database Update
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/update_database.yml'
+      - 'scripts/convert.py'
+      - 'tests/test_convert.py'
   schedule:
-    - cron: '0 0 * * 0'  # 每周日运行
+    - cron: '17 3 * * 1'  # 每周一 UTC 03:17，避开整点高峰
   workflow_dispatch:      # 允许手动触发
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dblp-database-update
+  cancel-in-progress: false
 
 jobs:
   update-dblp:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     environment: 
       name: production
     env:
@@ -18,7 +33,7 @@ jobs:
       
       # 1. 设置 Python 环境
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           
@@ -27,6 +42,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install lxml tqdm
+
+      - name: Test converter
+        run: python -m unittest discover -s tests -p 'test_*.py'
 
       - name: Setup PostgreSQL
         uses: tj-actions/install-postgresql@v3
@@ -48,9 +66,25 @@ jobs:
       # 5. 导入到 PostgreSQL
       - name: Import to PostgreSQL
         run: |
-          psql -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f dblp.sql
+          psql -v ON_ERROR_STOP=1 -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f dblp.sql
           
-      # 6. 清理临时文件
+      # 6. 记录数据新鲜度，同时保持 scheduled workflow 处于活跃状态
+      - name: Record successful refresh
+        run: |
+          entry_count=$(psql -v ON_ERROR_STOP=1 -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -Atc 'SELECT COUNT(*) FROM dblp_entries')
+          source_md5=$(cut -d ' ' -f 1 dblp.xml.gz.md5)
+          mkdir -p status
+          printf '{\n  "updated_at": "%s",\n  "source_md5": "%s",\n  "entry_count": %s\n}\n' \
+            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$source_md5" "$entry_count" \
+            > status/dblp-update.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add status/dblp-update.json
+          git commit -m 'chore: record DBLP refresh [skip ci]' || exit 0
+          git pull --rebase origin master
+          git push origin HEAD:master
+
+      # 7. 清理临时文件
       - name: Cleanup
         run: |
-          rm dblp.xml.gz dblp.xml.gz.md5 dblp.dtd dblp.sql
+          rm -f dblp.xml.gz dblp.xml.gz.md5 dblp.dtd dblp.sql
