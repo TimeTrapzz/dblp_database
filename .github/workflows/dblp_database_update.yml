@@ -6,8 +6,8 @@ on:
       - master
     paths:
       - '.github/workflows/dblp_database_update.yml'
-      - 'scripts/convert.py'
-      - 'tests/test_convert.py'
+      - 'scripts/**'
+      - 'tests/**'
   schedule:
     - cron: '17 3 * * 1'  # 每周一 UTC 03:17，避开整点高峰
   workflow_dispatch:      # 允许手动触发
@@ -53,50 +53,42 @@ jobs:
 
       # 3. 下载和处理 DBLP 数据
       - name: Download and process DBLP
-        run: |
-          download() {
-            local name="$1"
-            curl --fail --location --show-error \
-              --retry 5 --retry-delay 10 --retry-all-errors \
-              --connect-timeout 30 \
-              --output "${name}.part" "https://dblp.org/xml/${name}"
-            mv "${name}.part" "${name}"
-          }
-
-          # Fetch the checksum before the large archive so both are from the
-          # same published snapshot, then reject incomplete or stale data.
-          download dblp.dtd
-          download dblp.xml.gz.md5
-          download dblp.xml.gz
-          md5sum --check dblp.xml.gz.md5
+        id: download
+        run: python scripts/download.py
           
       # 4. 转换为 SQL
       - name: Convert to SQL
+        if: steps.download.outputs.changed == 'true'
         run: |
           python scripts/convert.py --dtd_file dblp.dtd --xml_file dblp.xml.gz --md5_file dblp.xml.gz.md5 --output_sql_file dblp.sql
           
       # 5. 导入到 PostgreSQL
       - name: Import to PostgreSQL
+        if: steps.download.outputs.changed == 'true'
         run: |
           psql -v ON_ERROR_STOP=1 -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f dblp.sql
           
-      # 6. 记录数据新鲜度，同时保持 scheduled workflow 处于活跃状态
-      - name: Record successful refresh
+      # 6. 分开记录实际导入时间和检查时间，保持 scheduled workflow 活跃
+      - name: Record refresh status
+        env:
+          DATA_CHANGED: ${{ steps.download.outputs.changed }}
         run: |
-          entry_count=$(psql -v ON_ERROR_STOP=1 -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -Atc 'SELECT COUNT(*) FROM dblp_entries')
-          source_md5=$(cut -d ' ' -f 1 dblp.xml.gz.md5)
-          mkdir -p status
-          printf '{\n  "updated_at": "%s",\n  "source_md5": "%s",\n  "entry_count": %s\n}\n' \
-            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$source_md5" "$entry_count" \
-            > status/dblp-update.json
+          if [ "$DATA_CHANGED" = true ]; then
+            entry_count=$(psql -v ON_ERROR_STOP=1 -h ${{ secrets.DB_HOST }} -p 5432 -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -Atc 'SELECT COUNT(*) FROM dblp_entries')
+            python scripts/download.py --record-status --entry-count "$entry_count"
+          else
+            python scripts/download.py --record-status
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add status/dblp-update.json
-          git commit -m 'chore: record DBLP refresh [skip ci]' || exit 0
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'chore: record DBLP refresh [skip ci]'
           git pull --rebase origin master
           git push origin HEAD:master
 
       # 7. 清理临时文件
       - name: Cleanup
+        if: always()
         run: |
-          rm -f dblp.xml.gz dblp.xml.gz.md5 dblp.dtd dblp.sql
+          rm -f dblp.xml.gz dblp.xml.gz.md5 dblp.dtd dblp.sql dblp-download.json
