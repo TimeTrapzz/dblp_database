@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-09-01T10:48:40Z",
-  "source_md5": "b69e5d19bfa86d5c158d61b38f6b36cb",
-  "entry_count": 12926684,
-  "last_checked_at": "2026-09-21T08:53:48.515010+00:00",
-  "last_check_mode": "monthly-fallback",
-  "warning": "Daily source unavailable; using official monthly snapshots. Bot verification page returned by https://dblp.org/xml/dblp.xml.gz.md5 No newer snapshot to import; keeping existing data.",
-  "latest_available_snapshot": "2026-09-01"
+  "updated_at": "2026-09-30T17:02:26.327629+00:00",
+  "source_md5": "b97666f5cb89f0aa1cff061b68662fbe",
+  "entry_count": 12992591,
+  "last_checked_at": "2026-09-30T16:14:45.106053+00:00",
+  "last_check_mode": "daily",
+  "source_url": "https://dblp.org/xml/dblp.xml.gz",
+  "source_date": "2026-09-29"
 }
