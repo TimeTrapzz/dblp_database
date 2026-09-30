@@ -4,6 +4,19 @@ from tqdm import tqdm
 import logging
 import argparse
 import hashlib
+from pathlib import Path
+
+
+class DBLPDTDResolver(etree.Resolver):
+    """Allow only the explicitly supplied local DTD, never other XML resources."""
+
+    def __init__(self, dtd_file):
+        self.dtd_path = Path(dtd_file).resolve()
+
+    def resolve(self, url, public_id, context):
+        if url in ('dblp.dtd', str(self.dtd_path), self.dtd_path.as_uri()):
+            return self.resolve_filename(str(self.dtd_path), context)
+        raise OSError(f"External XML resource is not allowed: {url}")
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +44,12 @@ def read_xml(dtd_file, xml_file, md5_file):
     dtd = etree.DTD(file=dtd_file)
 
     context = etree.iterparse(
-        gzip.open(xml_file), events=('end',), dtd_validation=True)
+        gzip.open(xml_file), events=('end',), dtd_validation=True,
+        load_dtd=True, resolve_entities=True, no_network=True)
+    # DBLP uses text entities declared in its external DTD. lxml >= 6.1
+    # defaults to internal-only resolution. Keep expansion bounded by libxml2
+    # and prevent XXE file access as well as network access.
+    context.resolvers.add(DBLPDTDResolver(dtd_file))
 
     return context, dtd
 
