@@ -31,6 +31,15 @@ not a claim that the data is current. If both sources fail validation, the job f
 and the database is not touched. The converter still validates the full XML before
 the separate PostgreSQL import step runs.
 
+The converter explicitly loads the supplied local DTD and expands its entities:
+lxml 6.1 changed `iterparse` to internal-only entity resolution, which breaks DBLP's
+external DTD (including its `%field;` parameter entity). A fail-closed resolver
+permits only `dblp.dtd` or the supplied DTD's absolute path/URI and rejects all other
+external resources, including local files. `no_network=True` alone would not block
+local-file XXE. DTD validation and libxml2's default resource limits remain enabled.
+The XML and supplied DTD must still come from the trusted official download sources;
+the MD5 check detects corruption, not malicious replacement of both data and checksum.
+
 Run the offline tests with:
 
 ```sh
@@ -39,3 +48,4 @@ python -m unittest discover -s tests -p 'test_*.py'
 
 Pull requests run these tests without production database secrets. Merging changes
 to the updater or workflow triggers the existing production refresh.
+Converter CI tests lxml 6.0.1, the failing run's 6.1.3, and the latest release.
