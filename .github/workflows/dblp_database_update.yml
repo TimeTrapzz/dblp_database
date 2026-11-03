@@ -46,10 +46,8 @@ jobs:
       - name: Test converter
         run: python -m unittest discover -s tests -p 'test_*.py'
 
-      - name: Setup PostgreSQL
-        uses: tj-actions/install-postgresql@v3
-        with:
-          postgresql-version: 16
+      - name: Install PostgreSQL client
+        run: bash scripts/install-postgresql-client.sh
 
       # 3. 下载和处理 DBLP 数据
       - name: Download and process DBLP
