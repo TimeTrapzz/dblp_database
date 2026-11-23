@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-11-16T11:51:26.367441+00:00",
-  "source_md5": "033d0237e5ba6a80735ac41c839a8a49",
-  "entry_count": 13112101,
-  "last_checked_at": "2026-11-16T11:10:53.160574+00:00",
+  "updated_at": "2026-11-23T13:13:28.493569+00:00",
+  "source_md5": "9af74355d199f3347991378a56a83f1a",
+  "entry_count": 13138544,
+  "last_checked_at": "2026-11-23T12:30:03.480937+00:00",
   "last_check_mode": "daily",
   "source_url": "https://dblp.org/xml/dblp.xml.gz",
-  "source_date": "2026-11-15"
+  "source_date": "2026-11-22"
 }
